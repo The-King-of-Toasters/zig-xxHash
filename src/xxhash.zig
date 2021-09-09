@@ -49,18 +49,21 @@ const XH32 = struct {
     pub fn update(self: *XH32, b: []const u8) void {
         assert(b.len % 16 == 0);
 
+        const ints = @ptrCast([*]align(1) const u32, b.ptr)[0 .. b.len >> 2];
         var off: usize = 0;
-        while (off < b.len) : (off += 16)
-            @call(.{ .modifier = .always_inline }, self.round, .{b[off..][0..16]});
+        while (off < ints.len) : (off += 4) {
+            const lane1 = mem.nativeToLittle(u32, ints[off + 0]);
+            const lane2 = mem.nativeToLittle(u32, ints[off + 1]);
+            const lane3 = mem.nativeToLittle(u32, ints[off + 2]);
+            const lane4 = mem.nativeToLittle(u32, ints[off + 3]);
+
+            self.acc1 = mix0(self.acc1, lane1);
+            self.acc2 = mix0(self.acc2, lane2);
+            self.acc3 = mix0(self.acc3, lane3);
+            self.acc4 = mix0(self.acc4, lane4);
+        }
 
         self.msg_len += b.len;
-    }
-
-    fn round(self: *XH32, b: *const [16]u8) void {
-        self.acc1 = mix0(self.acc1, mem.readIntLittle(u32, b[00..04]));
-        self.acc2 = mix0(self.acc2, mem.readIntLittle(u32, b[04..08]));
-        self.acc3 = mix0(self.acc3, mem.readIntLittle(u32, b[08..12]));
-        self.acc4 = mix0(self.acc4, mem.readIntLittle(u32, b[12..16]));
     }
 
     pub fn final(self: *XH32, b: []const u8) u32 {
@@ -241,18 +244,21 @@ pub const XH64 = struct {
     pub fn update(self: *XH64, b: []const u8) void {
         assert(b.len % 32 == 0);
 
+        const ints = @ptrCast([*]align(1) const u64, b.ptr)[0 .. b.len >> 3];
         var off: usize = 0;
-        while (off < b.len) : (off += 32)
-            @call(.{ .modifier = .always_inline }, self.round, .{b[off..][0..32]});
+        while (off < ints.len) : (off += 4) {
+            const lane1 = mem.nativeToLittle(u64, ints[off + 0]);
+            const lane2 = mem.nativeToLittle(u64, ints[off + 1]);
+            const lane3 = mem.nativeToLittle(u64, ints[off + 2]);
+            const lane4 = mem.nativeToLittle(u64, ints[off + 3]);
+
+            self.acc1 = mix0(self.acc1, lane1);
+            self.acc2 = mix0(self.acc2, lane2);
+            self.acc3 = mix0(self.acc3, lane3);
+            self.acc4 = mix0(self.acc4, lane4);
+        }
 
         self.msg_len += b.len;
-    }
-
-    fn round(self: *XH64, b: *const [32]u8) void {
-        self.acc1 = mix0(self.acc1, mem.readIntLittle(u64, b[00..08]));
-        self.acc2 = mix0(self.acc2, mem.readIntLittle(u64, b[08..16]));
-        self.acc3 = mix0(self.acc3, mem.readIntLittle(u64, b[16..24]));
-        self.acc4 = mix0(self.acc4, mem.readIntLittle(u64, b[24..32]));
     }
 
     pub fn final(self: *XH64, b: []const u8) u64 {
