@@ -576,8 +576,8 @@ fn XXHash(comptime Impl: type) type {
             const aligned_len = input.len - (input.len % block_length);
 
             var c = Impl.init(seed);
-            @call(.always_inline, c.update, .{input[0..aligned_len]});
-            return @call(.always_inline, c.final, .{input[aligned_len..]});
+            c.update(input[0..aligned_len]);
+            return c.final(input[aligned_len..]);
         }
     };
 }
@@ -603,52 +603,39 @@ const test_buffer2 = blk: {
     break :blk &buf;
 };
 
-const Test = struct {
-    seed: u64,
-    data: []const u8,
-    sum: u64,
-
-    fn new(seed: u64, data: []const u8, sum: u64) Test {
-        return Test{ .seed = seed, .data = data, .sum = sum };
-    }
-};
-const test_data32 = [_]Test{
-    // From the reference C implementation
-    Test.new(0, "", 0x02cc5d05),
-    Test.new(prime32, "", 0x36b78ae7),
-    Test.new(0, test_buffer1[0..1], 0xCF65B03E),
-    Test.new(prime32, test_buffer1[0..1], 0xB4545AA4),
-    Test.new(0, test_buffer1[0..14], 0x1208E7E2),
-    Test.new(prime32, test_buffer1[0..14], 0x6AF1D1FE),
-    Test.new(0, test_buffer1[0..222], 0x5BD11DBD),
-    Test.new(prime32, test_buffer1[0..222], 0x58803C5F),
+test "XXHash32 Test Vectors" {
+    // From the reference C implementation.
+    try expectEqual(@as(u32, 0x02cc5d05), XXHash32.hash(0, ""));
+    try expectEqual(@as(u32, 0x36b78ae7), XXHash32.hash(prime32, ""));
+    try expectEqual(@as(u32, 0xCF65B03E), XXHash32.hash(0, test_buffer1[0..1]));
+    try expectEqual(@as(u32, 0xB4545AA4), XXHash32.hash(prime32, test_buffer1[0..1]));
+    try expectEqual(@as(u32, 0x1208E7E2), XXHash32.hash(0, test_buffer1[0..14]));
+    try expectEqual(@as(u32, 0x6AF1D1FE), XXHash32.hash(prime32, test_buffer1[0..14]));
+    try expectEqual(@as(u32, 0x5BD11DBD), XXHash32.hash(0, test_buffer1[0..222]));
+    try expectEqual(@as(u32, 0x58803C5F), XXHash32.hash(prime32, test_buffer1[0..222]));
     // From the twox-hash rust crate
-    Test.new(0, &[_]u8{42}, 0xe0fe705f),
-    Test.new(0, "Hello, world!\x00", 0x9e5e7e93),
-    Test.new(0, test_buffer2, 0x7f89ba44),
-    Test.new(0x42c91977, "", 0xd6bf8459),
-    Test.new(0x42c91977, test_buffer2, 0x6d2f6c17),
-};
-const test_data64 = [_]Test{
-    // From the reference C implementation
-    Test.new(0, "", 0xef46db3751d8e999),
-    Test.new(prime32, test_buffer1[0..0], 0xac75fda2929b17ef),
-    Test.new(0, test_buffer1[0..1], 0xe934a84adb052768),
-    Test.new(prime32, test_buffer1[0..1], 0x5014607643a9b4c3),
-    Test.new(0, test_buffer1[0..4], 0x9136a0dca57457ee),
-    Test.new(0, test_buffer1[0..14], 0x8282dcc4994e35c8),
-    Test.new(prime32, test_buffer1[0..14], 0xc3bd6bf63deb6df0),
-    Test.new(0, test_buffer1[0..222], 0xb641ae8cb691c174),
-    Test.new(prime32, test_buffer1[0..222], 0x20cb8ab7ae10c14a),
-    // From the twox-hash rust crate
-    Test.new(0, &[_]u8{42}, 0x0a9edecebeb03ae4),
-    Test.new(0, "Hello, world!\x00", 0x7b06c531ea43e89f),
-    Test.new(0, test_buffer2, 0x6ac1e58032166597),
-    Test.new(0xae0543311b702d91, "", 0x4b6a04fcdf7a4672),
-    Test.new(0xae0543311b702d91, test_buffer2, 0x567e355e0682e1f1),
-};
+    try expectEqual(@as(u32, 0xe0fe705f), XXHash32.hash(0, &[_]u8{42}));
+    try expectEqual(@as(u32, 0x9e5e7e93), XXHash32.hash(0, "Hello, world!\x00"));
+    try expectEqual(@as(u32, 0x7f89ba44), XXHash32.hash(0, test_buffer2));
+    try expectEqual(@as(u32, 0xd6bf8459), XXHash32.hash(0x42c91977, ""));
+    try expectEqual(@as(u32, 0x6d2f6c17), XXHash32.hash(0x42c91977, test_buffer2));
+}
 
-test "XXHash Test Vectors" {
-    for (test_data64) |t| try expectEqual(t.sum, XXHash64.hash(t.seed, t.data));
-    for (test_data32) |t| try expectEqual(t.sum, XXHash32.hash(@intCast(u32, t.seed), t.data));
+test "XXHash64 Test Vectors" {
+    // From the reference C implementation
+    try expectEqual(@as(u64, 0xef46db3751d8e999), XXHash64.hash(0, ""));
+    try expectEqual(@as(u64, 0xac75fda2929b17ef), XXHash64.hash(prime32, test_buffer1[0..0]));
+    try expectEqual(@as(u64, 0xe934a84adb052768), XXHash64.hash(0, test_buffer1[0..1]));
+    try expectEqual(@as(u64, 0x5014607643a9b4c3), XXHash64.hash(prime32, test_buffer1[0..1]));
+    try expectEqual(@as(u64, 0x9136a0dca57457ee), XXHash64.hash(0, test_buffer1[0..4]));
+    try expectEqual(@as(u64, 0x8282dcc4994e35c8), XXHash64.hash(0, test_buffer1[0..14]));
+    try expectEqual(@as(u64, 0xc3bd6bf63deb6df0), XXHash64.hash(prime32, test_buffer1[0..14]));
+    try expectEqual(@as(u64, 0xb641ae8cb691c174), XXHash64.hash(0, test_buffer1[0..222]));
+    try expectEqual(@as(u64, 0x20cb8ab7ae10c14a), XXHash64.hash(prime32, test_buffer1[0..222]));
+    // From the twox-hash rust crate
+    try expectEqual(@as(u64, 0x0a9edecebeb03ae4), XXHash64.hash(0, &[_]u8{42}));
+    try expectEqual(@as(u64, 0x7b06c531ea43e89f), XXHash64.hash(0, "Hello, world!\x00"));
+    try expectEqual(@as(u64, 0x6ac1e58032166597), XXHash64.hash(0, test_buffer2));
+    try expectEqual(@as(u64, 0x4b6a04fcdf7a4672), XXHash64.hash(0xae0543311b702d91, ""));
+    try expectEqual(@as(u64, 0x567e355e0682e1f1), XXHash64.hash(0xae0543311b702d91, test_buffer2));
 }
