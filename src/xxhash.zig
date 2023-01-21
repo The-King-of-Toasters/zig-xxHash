@@ -72,8 +72,8 @@ const XH32 = struct {
         var acc = if (self.msg_len < 16)
             self.acc3 +% primes[4]
         else
-            math.rotl(u32, self.acc1, 01) +%
-                math.rotl(u32, self.acc2, 07) +%
+            math.rotl(u32, self.acc1, 1) +%
+                math.rotl(u32, self.acc2, 7) +%
                 math.rotl(u32, self.acc3, 12) +%
                 math.rotl(u32, self.acc4, 18);
         acc +%= @truncate(u32, self.msg_len +% b.len);
@@ -268,8 +268,8 @@ pub const XH64 = struct {
             self.acc3 +% primes[4]
         else blk: {
             var h =
-                math.rotl(u64, self.acc1, 01) +%
-                math.rotl(u64, self.acc2, 07) +%
+                math.rotl(u64, self.acc1, 1) +%
+                math.rotl(u64, self.acc2, 7) +%
                 math.rotl(u64, self.acc3, 12) +%
                 math.rotl(u64, self.acc4, 18);
 
@@ -576,8 +576,8 @@ fn XXHash(comptime Impl: type) type {
             const aligned_len = input.len - (input.len % block_length);
 
             var c = Impl.init(seed);
-            @call(.{ .modifier = .always_inline }, c.update, .{input[0..aligned_len]});
-            return @call(.{ .modifier = .always_inline }, c.final, .{input[aligned_len..]});
+            @call(.always_inline, c.update, .{input[0..aligned_len]});
+            return @call(.always_inline, c.final, .{input[aligned_len..]});
         }
     };
 }
