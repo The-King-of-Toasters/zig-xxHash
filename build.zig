@@ -1,29 +1,37 @@
 const std = @import("std");
 
-pub fn build(b: *std.build.Builder) void {
-    // Standard target options allows the person running `zig build` to choose
-    // what target to build for. Here we do not override the defaults, which
-    // means any target is allowed, and the default is native. Other options
-    // for restricting supported target set are available.
+pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
-    // Standard release options allow the person running `zig build` to select
-    // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall.
-    const mode = b.standardReleaseOptions();
+    const optimize = b.standardOptimizeOption(.{});
 
-    const lib = b.addStaticLibrary("xxhash", "src/xxhash.zig");
-    lib.setBuildMode(mode);
-    lib.install();
+    const lib = b.addStaticLibrary(.{
+        .name = "xxhash",
+        .root_source_file = .{ .path = "src/xxhash.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(lib);
+
+    const main_tests = b.addTest(.{
+        .root_source_file = .{ .path = "src/xxhash.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+    const run_main_tests = b.addRunArtifact(main_tests);
 
     const test_step = b.step("test", "Run library tests");
-    var main_tests = b.addTest("src/xxhash.zig");
-    main_tests.setBuildMode(mode);
-    test_step.dependOn(&main_tests.step);
+    test_step.dependOn(&run_main_tests.step);
 
-    const benchmark_step = b.step("benchmark", "Run the benchmark.");
-    const benchmark = b.addExecutable("benchmark", "src/benchmark.zig");
-    benchmark.setBuildMode(mode);
-    benchmark.setTarget(target);
-    const benchmark_run = benchmark.run();
-    benchmark_run.step.dependOn(b.getInstallStep());
-    benchmark_step.dependOn(&benchmark_run.step);
+    const benchmark = b.addExecutable(.{
+        .name = "benchmark",
+        .root_source_file = .{ .path = "src/benchmark.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+
+    b.installArtifact(benchmark);
+    const run_cmd = b.addRunArtifact(benchmark);
+    run_cmd.step.dependOn(b.getInstallStep());
+    const run_step = b.step("benchmark", "Run the benchmark");
+    run_step.dependOn(&run_cmd.step);
 }

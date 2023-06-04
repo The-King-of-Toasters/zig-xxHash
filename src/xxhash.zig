@@ -590,7 +590,7 @@ const test_buffer1 = blk: {
     var bytegen: u64 = prime32;
     var buf: [2367]u8 = undefined;
 
-    for (buf) |*c| {
+    for (&buf) |*c| {
         c.* = @truncate(u8, bytegen >> 56);
         bytegen *%= prime64;
     }
@@ -599,7 +599,7 @@ const test_buffer1 = blk: {
 };
 const test_buffer2 = blk: {
     var buf: [100]u8 = undefined;
-    for (buf) |*c, i| c.* = i;
+    for (&buf, 0..) |*c, i| c.* = i;
     break :blk &buf;
 };
 
